@@ -5,11 +5,11 @@
  *   node --test packages/pi-subagent/src/config.test.ts
  */
 
-import { afterEach, describe, test } from "node:test";
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { afterEach, describe, test } from "node:test";
 import { loadSubagentConfig } from "./config.ts";
 import { DEFAULT_CONFIG } from "./types.ts";
 
@@ -165,5 +165,52 @@ describe("loadSubagentConfig", () => {
     assert.equal(config.maxCost, DEFAULT_CONFIG.maxCost);
     assert.deepEqual(config.history, DEFAULT_CONFIG.history);
     assert.deepEqual(config.inheritance, DEFAULT_CONFIG.inheritance);
+  });
+
+  test("explicit invalid project values do not inherit the global value", () => {
+    const { agentDir, projectDir } = makeRoot();
+    writeSettings(agentDir, {
+      subagent: {
+        maxConcurrency: 8,
+        maxDepth: 7,
+        maxTurns: 6,
+        maxCost: 5,
+        history: { enabled: false },
+        summary: { role: "global-summary", enabled: false },
+        inheritance: { maxChars: 1234 },
+        agentOverrides: { global: { disabled: true } },
+      },
+    });
+    writeSettings(path.join(projectDir, ".pi"), {
+      subagent: {
+        maxConcurrency: null,
+        maxDepth: "invalid",
+        maxTurns: null,
+        maxCost: false,
+        history: null,
+        summary: { role: null, enabled: null },
+        inheritance: null,
+        agentOverrides: null,
+      },
+    });
+
+    assert.deepEqual(loadSubagentConfig(projectDir), DEFAULT_CONFIG);
+  });
+
+  test("without a cwd, project settings are not loaded", () => {
+    const { agentDir, projectDir } = makeRoot();
+    writeSettings(agentDir, { subagent: { maxConcurrency: 8 } });
+    writeSettings(path.join(projectDir, ".pi"), { subagent: { maxConcurrency: 2 } });
+
+    assert.equal(loadSubagentConfig().maxConcurrency, 8);
+  });
+
+  test("untrusted projects do not contribute project settings", () => {
+    const { agentDir, projectDir } = makeRoot();
+    writeSettings(agentDir, { subagent: { maxConcurrency: 8 } });
+    writeSettings(path.join(projectDir, ".pi"), { subagent: { maxConcurrency: 2 } });
+
+    assert.equal(loadSubagentConfig(projectDir, false).maxConcurrency, 8);
+    assert.equal(loadSubagentConfig(projectDir, true).maxConcurrency, 2);
   });
 });

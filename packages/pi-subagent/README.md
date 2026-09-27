@@ -141,7 +141,7 @@ The same `subagent` block in a project's `.pi/settings.json` overrides the globa
 - **Nested blocks** (`history`, `summary`, `inheritance`): merge field by field — a project-set field overrides the global, unset fields inherit the global.
 - **`agentOverrides`**: merges per role name. A project role's fields are merged into the global role's fields (shared keys: project wins), roles present only in the project are added, and global-only roles survive.
 
-```json
+```jsonc
 // ~/.pi/agent/settings.json  (global)
 { "subagent": { "maxConcurrency": 8, "summary": { "role": "global-summary" } } }
 
@@ -156,6 +156,12 @@ The same `subagent` block in a project's `.pi/settings.json` overrides the globa
 ```
 
 If your project has no `.pi/settings.json`, or its `subagent` block is empty, the global config is used as-is.
+
+Pi currently has only these two settings scopes: the global agent directory and
+the current working directory's `.pi/settings.json`. It does not search parent
+directories for additional `settings.json` files. Project settings are loaded
+through Pi's `SettingsManager`, so the extension follows Pi's parsing,
+project-trust, and recursive object-merge behavior.
 
 Timeouts are defined per role. Built-in defaults are `explorer: 900`, `reviewer: 3600`, `worker: 2400`, and `researcher: 2400` seconds. The timeout is active time — the clock pauses while the child is inside a nested `subagent_delegate` call, so delegate-capable roles need no extra headroom.
 
